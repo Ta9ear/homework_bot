@@ -10,6 +10,7 @@ import telegram
 from dotenv import load_dotenv
 
 from exceptions import IsNot200Error, RepeatSendError
+from settings import *
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -26,21 +27,12 @@ handler_streaming = logging.StreamHandler(sys.stdout)
 handler_streaming.setFormatter(formatter)
 logger.addHandler(handler_rotating)
 logger.addHandler(handler_streaming)
+
 load_dotenv()
 
 PRACTICUM_TOKEN = os.getenv('PRACTICUM_TOKEN')
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
-
-RETRY_TIME = 60 * 10
-ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
-HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
-
-HOMEWORK_STATUSES = {
-    'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
-    'reviewing': 'Работа взята на проверку ревьюером.',
-    'rejected': 'Работа проверена: у ревьюера есть замечания.'
-}
 
 
 def sent_message_do_not_repeat(message, bot):
@@ -82,36 +74,22 @@ def check_response(response):
     """Gets value from dict with the key 'homeworks'."""
     if not isinstance(response, dict):
         raise TypeError('Response must be dict')
-    try:
-        homework = response.get('homeworks')
-        if type(homework) != list:
-            raise AttributeError('Homework must be list')
-        if homework is None:
-            raise KeyError('There is no homework key')
-    except KeyError:
-        raise KeyError('There is no homework key')
-    except AttributeError:
+    homework = response.get('homeworks')
+    if type(homework) != list:
         raise AttributeError('Homework must be list')
-    except Exception:
-        raise Exception('Check response error')
-    else:
-        return homework
+    if homework is None:
+        raise KeyError('There is no homework key')
+    return homework
 
 
 def parse_status(homework):
     """Parsing some values from homework and returns HW status."""
-    try:
-        homework_name = homework.get('homework_name')
-        homework_status = homework.get('status')
-        if homework_name is None or homework_status is None:
-            raise KeyError('Key error in during parsing')
-        verdict = HOMEWORK_STATUSES[homework_status]
-    except KeyError:
-        raise KeyError('Key error')
-    except Exception:
-        raise Exception('Parse status error')
-    else:
-        return f'Изменился статус проверки работы "{homework_name}". {verdict}'
+    homework_name = homework.get('homework_name')
+    homework_status = homework.get('status')
+    if homework_name is None or homework_status is None:
+        raise KeyError('Key error in during parsing')
+    verdict = HOMEWORK_STATUSES[homework_status]
+    return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
 def check_tokens():
@@ -136,7 +114,6 @@ def main():
                 else:
                     logger.debug('There are no new statuses')
                 current_timestamp = int(time.time())
-                time.sleep(RETRY_TIME)
             except Exception as error:
                 message = f'Program crash: {error}'
                 logger.error(message)
@@ -147,9 +124,9 @@ def main():
                         raise telegram.error.TelegramError(
                             'Message is not sent'
                         )
-                time.sleep(RETRY_TIME)
             else:
                 logger.info('There are no errors')
+            time.sleep(RETRY_TIME)
     else:
         logger.critical('Environment variables error')
 
