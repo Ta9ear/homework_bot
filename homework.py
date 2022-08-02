@@ -10,7 +10,7 @@ import telegram
 from dotenv import load_dotenv
 
 from exceptions import IsNot200Error, RepeatSendError
-from settings import *
+from settings import ENDPOINT, HEADERS, HOMEWORK_STATUSES, RETRY_TIME
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
